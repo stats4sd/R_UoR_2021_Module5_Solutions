@@ -1,0 +1,150 @@
+---
+title: "Solutions to Exercises for Session 5: Statistical Hypothesis Tests"
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(janitor)
+
+
+SurveyData<-readRDS("SurveyData.RDS")
+
+
+```
+
+## Exercise 1.1
+
+**Exercise 1: I would like to investigate the hypothesis that Democrats, on average, read more books in the past year than republicans**
+
+*1.1 - Firstly - create a subset of the data which only includes Democrats and Republicans, and excludes the respondents who responded as Independent. Assign this to a new object called `DemRep`*
+
+As seen in previous modules, one way to create a subset of the data is to use the `filter` function. Generally you would write this code in one of the following ways, they all achieve the same task.
+
+You could have also done `PoliticalParty == "Democrat" | PoliticalParty == "Republican"` as your condition instead. Recall that `!=` is used to denote NOT EQUAL TO.
+
+Remember you will not see any output from this code, so check your environment pane in Rstudio to make sure it has worked as expected.
+
+```{r x1_1}
+DemRep<-filter(SurveyData,PoliticalParty!="Independent")
+
+#or
+SurveyData %>%
+  filter(PoliticalParty!="Independent") -> DemRep
+
+#or
+DemRep <- SurveyData %>%
+  filter(PoliticalParty!="Independent")
+
+```
+
+## Exercise 1.2
+
+*1.2 Now calculate the mean, median and standard deviation of the number of books read by political party*
+
+We will of course want to continue with the subset of the data we have created so it is best to start with this data and then pipe into the subsequent functions.
+
+As we want statistics by 2 different groups we first need to use the `group_by` function, grouping by PoliticalParty.
+
+Finally, we can use the `summarise` function to generate those statistics. Remember as we have multiple statistics we want to calculate, each should be separated by a comma.
+
+```{r x1_2}
+DemRep %>%
+  group_by(PoliticalParty) %>%
+    summarise(mean = mean(Books), median = median(Books), sd = sd(Books))
+
+```
+
+Seems there is a considerable difference in the mean but there is a significantly higher standard deviation amongst this group. The medians are much tigher together.
+
+## Exercise 1.3
+
+*1.3 Now produce histograms of the distribution of number of books read by political party*
+
+Of course we set up the first line in the usual manner with DemRep taking our data argument and us specifying Books to be one of our variables in `aes` in this case, for a histogram the x-axis is normally used though it can also be plotted on the y-axis. We can then add our geom layer, for a histogram we use `geom_histogram`. Finally we need to show the difference between the political parties, most of the time you could set this to be colour or fill to show the difference but this doesn't really work for histograms as they will just overlap. so its better we split this by facets
+
+```{r x1_3}
+ggplot(DemRep,aes(x=Books))+
+  geom_histogram()+
+    facet_wrap(~PoliticalParty)
+```
+As we might have expected from our mean and sd, books is very vey positively skewed and not normally distributed at all.
+
+## Exercise 1.4
+
+*1.4 Based on the summary statistics and plots, choose an appropriate statistical method to test the null hypothesis that there is no difference in the number of books read by political party, conduct the test and interpret the results*
+
+As our variable is so positively skewed, a t.test isn't really called for as this assumes a normal distribution. Therefore, we need to opt for its non-parametric equivalent, the wilcox test. For which the function is `wilcox.test`
+
+Unlike previous tidyverse functions we have seen, data is not the first argument, it is the second. Instead our first argument is a formula. We specify `Books~PoliticalParty` to tell R we want to test the means of Books grouped by our 2 political parties. Then we can add in our dataset name.
+
+```{r x1_4}
+wilcox.test(Books~PoliticalParty,DemRep)
+```
+
+0.04 seems to suggest that there is some evidence of a difference between political parties at least enough to say that we can reject the null hypothesis at the 5% level of significance.
+
+## Exercise 2
+
+**Exercise 2: I am now (for some reason or other) interested in finding out if there is a relationship between whether a respondent's gender and whether or not they believe in ghosts?**
+
+To do a crosstab we want to be using functions from the janitor package which we have already loaded (`library(janitor)`). To just to a simple crosstab of two variables we can just pipe the data into the `tabyl` function, specify the two variables and as a result we get a nice simple table of frequencies.
+
+`tabyl` is also capable of producing tables for 1 and 3 variables but we only need to focus on 2 variables here.
+
+*2.1 Firstly, produce a cross-tabulation of approval of gender and whether or not a respondent believes in ghosts.*
+```{r x2_1}
+SurveyData %>%
+  tabyl(Gender,Ghosts)
+
+```
+
+## Exercise 2.1
+
+janitor comes with many useful formatting functions, especially for percentages. 
+
+The first of these is `adorn_percentages`, this will turn your frequencies into proportions. By default this will be the row percentages, but you can specify `"col"` to change this so column proportions are calculated instead. In our case we want to know if there is a difference between the genders which is our row variable, therefore row percentages are more useful.
+
+We can then pipe this into `adorn_pct_formatting` which will format these proportions as more typical percentages. You will need to be careful about the order of these operations as if you go straight into formatting without the `adorn_percentages`, R will think your frequencies will be proportions meaning you could see results like 19300% which is obviously not what we want.
+
+Not shown here but there is also another function called `adorn_ns`, this displays the frequency as well as the percentages (used after `adorn_pct_formatting`). i.e. 52.0% (193) for Female-NO would be how that would appear if we were to add in this line at the end.
+
+*2.2 Convert this table into a sensible set of percentages (and format the numbers so they appear as percentages)*
+```{r x2_2}
+SurveyData %>%
+  tabyl(Gender,Ghosts) %>%
+    adorn_percentages("row") %>%
+      adorn_pct_formatting()
+
+```
+
+## Exercise 2.3
+
+*2.3 Produce an appropriate graph displaying the relationship between gender and the belief in ghosts*
+
+As we are focused on frequencies we only need to use a bar chart. We could use a facet to split the Ghosts variable but this is probably unnecessary and we can instead use fill.
+
+By default the placing of bars is defined by a `position = "stack"` argument which produces a stacked bar chart. Personally these can be a bit harder to read so we can change this argument to `position = "fill"` which will instead create a proportional stacked bar chart, with our x axis now representing proportion instead of the frequency.
+
+```{r x2_3}
+ggplot(SurveyData,aes(y=Gender,fill=Ghosts))+
+  geom_bar(position="fill")+
+  labs(fill="Do you believe in ghosts?",x="Proportion")
+```
+
+Seems that Women may be more likely to believe in ghosts but lets test this statistically.
+
+## Exercise 2.4
+
+*2.4 Based on the cross-tab select an appropriate statistical method to test the null hypothesis that there is no relationship between these variables, conduct the test, and interpret the results*
+
+We can start by copying our code from exercise 2.1
+
+As we have seen there is no evidence of any one cell having a count below 5, we don't need a non-parametric test in this case. Instead we can use a standard Chi-Square test. For which we can pipe our crosstab right into the `chisq.test`
+
+```{r x2_4}
+SurveyData %>%
+  tabyl(Gender,Ghosts) %>%
+    chisq.test()
+```
+
+We have a very small p-value, something like 0.0000000178. So i think we can safely reject the null hypothesis that there is no relationship and conclude there is strong evidence to suggest that that there is a relationship between gender and belief in ghosts.
