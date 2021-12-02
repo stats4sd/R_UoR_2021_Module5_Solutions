@@ -156,34 +156,75 @@ We have a very small p-value, something like 0.0000000178. So i think we can saf
 Work through this whole process yourself. Make sure you add comments and explanations to yourself as you go through to explain decisions you make, and interpret the output you obtain.
 
 
-We can start by largely copying our code from exercise 1.2, just replacing our data and variables to suit our new investigation. We compare the means, medians and standard deviations between the two groups. At first glance, it seems there is a small difference, but we will need to do more to see if this is statistically significant.
+This is perhaps not as straightforward as it seems - age is numeric, ghosts has two levels, so we could consider doing a t-test
 
-```{r x3_1}
+```{r}
+
 SurveyData %>%
   group_by(Ghosts) %>%
-    summarise(mean = mean(Age), median = median(Age), sd = sd(Age))
+    summarise(mean(Age),median(Age),sd(Age))
 ```
 
-So we need to do a statistical hypothesis test, but which one?
-
-Lets plot a histogram so we can check the distributions of the age variable in our data, and compare across the two groups. We need to do this to check if our data could satisfy the assumption of a normal distribution.
-
-```{r x3_2}
-ggplot(SurveyData, aes(x = Age))+
+```{r}
+ggplot(SurveyData,aes(x=Age)) +
   geom_histogram()+
-  facet_wrap(~Ghosts)
+    facet_wrap(~Ghosts)
+
+ggplot(SurveyData,aes(x=Age,y=Ghosts)) +
+  geom_boxplot()
+  
 ```
 
-Hmm, its perhaps slightly abnormal but may not significantly waver enough to say that the normal distribution assumption is completely invalid. This may come down to personal interpretation.
 
-As you will see below, with either test we still get a result that is significant at the 5% level. Therefore there is evidence to suggest that there is a difference in the average ages of those who do and those who don't believe in ghosts.
+Average age of ghost believers is a little bit shifted down compared to non-ghost believers. Age distribution not normal, but close enough for it to be OK.
 
-```{r x3_3}
-wilcox.test(Age~Ghosts,SurveyData)
-```
-
-*or*
-
-```{r x3_4}
+```{r}
 t.test(Age~Ghosts,SurveyData)
 ```
+
+So p=0.013 so we can conclude that evidence that average age of ghost believers is lower than that of non-ghost believers
+
+
+But there is a small issue here - the t-test has a direction. We have a dependent variable (numeric) and an independent variable (2-level factor). In effect what we are saying by doing a t-test here is that "age" depends on "belief in ghosts". This is a pretty dumb possible direction! It would make much more sense to consider if "belief in ghosts" depends on "age".
+
+And we can't do a t-test on that. There is no 'simple' hypothesis test for that direction - once you have learnt a bit about modelling in R, you could choose to do a logistic regression.
+
+But what we could do instead is categorise age into groups, and then look at percentages and a chi square test. This will probably give us a better idea of this relationship than looking at mean ages and t-tests.
+
+
+```{r}
+
+SurveyData %>%
+    tabyl(AgeGrp,Ghosts) %>%
+      adorn_percentages()
+
+
+```
+What we see is that belief in ghosts looks pretty constant, around 40%, in all age groups up to 60 years old. But then a ~10% drop off for 60-70 year olds, and another 10% drop off for 70+ year olds. Doing a plot here will be much more informative than the boxplots/histograms we saw earlier!
+
+```{r}
+SurveyData %>%
+    ggplot(aes(y=AgeGrp,fill=Ghosts))+
+      geom_bar(position="fill")
+```
+
+Or if you just wanted the % saying yes - we could pipe from the adorn_percentages() stage.
+
+geom_label is also quite nice to make it easy to read stuff - and I've extended to also show off round() and paste()
+```{r}
+SurveyData %>%
+    tabyl(AgeGrp,Ghosts)%>%
+      adorn_percentages() %>%
+        ggplot(aes(y=Yes,x=AgeGrp,fill=AgeGrp))+
+          geom_col()+
+            geom_label(aes(label=paste0(round(Yes*100),"%")))
+```
+And let's see if it's significant?
+
+```{r}
+SurveyData %>%
+    tabyl(AgeGrp,Ghosts) %>%
+      chisq.test()
+```
+Almost - p=0.054, so cant conclude from this analysis that age is signifcant predictor of ghost belief. But age groups were totally arbitrary selections - we probably need to learn more about statistical modelling! 
+
