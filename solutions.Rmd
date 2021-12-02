@@ -161,3 +161,43 @@ SurveyData %>%
 ```
 
 We have a very small p-value, something like 0.0000000178. So i think we can safely reject the null hypothesis that there is no relationship and conclude there is strong evidence to suggest that that there is a relationship between gender and belief in ghosts.
+
+
+## Exercise 3
+
+*Investigate the relationship between age and belief in ghosts. Produce some summary statistics and plots, and conduct a hypothesis test.*
+
+Work through this whole process yourself. Make sure you add comments and explanations to yourself as you go through to explain decisions you make, and interpret the output you obtain.
+
+
+We can start by largely copying our code from exercise 1.2, just replacing our data and variables to suit our new investigation. We compare the means, medians and standard deviations between the two groups. At first glance, it seems there is a small difference, but we will need to do more to see if this is statistically significant.
+
+```{r x3_1, exercise=TRUE}
+SurveyData %>%
+  group_by(Ghosts) %>%
+    summarise(mean = mean(Age), median = median(Age), sd = sd(Age))
+```
+
+So we need to do a statistical hypothesis test, but which one?
+
+Lets plot a histogram so we can check the distributions of the age variable in our data, and compare across the two groups. We need to do this to check if our data could satisfy the assumption of a normal distribution.
+
+```{r x3_2, exercise=TRUE}
+ggplot(SurveyData, aes(x = Age))+
+  geom_histogram()+
+  facet_wrap(~Ghosts)
+```
+
+Hmm, its perhaps slightly abnormal but may not significantly waver enough to say that the normal distribution assumption is completely invalid. This may come down to personal interpretation.
+
+As you will see below, with either test we still get a result that is significant at the 5% level. Therefore there is evidence to suggest that there is a difference in the average ages of those who do and those who don't believe in ghosts.
+
+```{r x3_3, exercise=TRUE}
+wilcox.test(Age~Ghosts,SurveyData)
+```
+
+*or*
+
+```{r x3_4, exercise=TRUE}
+t.test(Age~Ghosts,SurveyData)
+```
